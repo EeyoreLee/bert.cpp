@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "fstream": "cpp"
+    },
+    "[python]": {
+        "editor.formatOnSaveMode": "file",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "eeyore.yapf",
+        "editor.formatOnType": false
+    },
+    "yapf.importStrategy": "useBundled",
+}

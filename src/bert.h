@@ -17,6 +17,7 @@ extern "C"
         int32_t hidden_size = 768;
         int32_t num_labels = 1000;
         int32_t num_attention_heads = 12;
+        int32_t ftype = 1;
     };
 
     struct bert_embedding
@@ -107,6 +108,7 @@ extern "C"
 
     int bert_predict();
     std::vector<int> bert_batch_predict();
+    bool bert_model_load(const std::string &fname, bert_model &model);
 
 #ifdef __cplusplus
 }
