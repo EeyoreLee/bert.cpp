@@ -25,6 +25,18 @@
             ],
             "preLaunchTask": "C/C++: gcc build active file",
             "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "internalConsole",
+            "args": [
+                "/media/E/lichunyu/models/pretrained_models/bert-tiny-chinese",
+                "--save",
+                "${workspaceFolder}/data/ggml-model"
+            ]
         }
     ],
     "version": "2.0.0"
