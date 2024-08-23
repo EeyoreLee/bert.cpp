@@ -5,9 +5,11 @@
 #include <fstream>
 
 int bert_predict() {
+    return 0;
 };
 
 std::vector<int> bert_batch_predict() {
+    return std::vector<int>{1, 2};
 };
 
 bool bert_model_load(const std::string &fname, bert_model &model)
@@ -82,4 +84,5 @@ bool bert_model_load(const std::string &fname, bert_model &model)
         return false;
     }
     }
+    return true;
 };
