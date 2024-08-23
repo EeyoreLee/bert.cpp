@@ -9,4 +9,11 @@
         "editor.formatOnType": false
     },
     "yapf.importStrategy": "useBundled",
+    "cmake.sourceDirectory": [
+        "/media/E/lichunyu/bert.cpp",
+        "/media/E/lichunyu/bert.cpp/cmake",
+        "/media/E/lichunyu/bert.cpp/test/test_model_load"
+    ],
+    "C_Cpp.default.compilerPath": "/usr/bin/g++-11",
+    "cmake.configureOnOpen": true,
 }
