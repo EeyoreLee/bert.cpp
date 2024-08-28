@@ -39,7 +39,14 @@ def convert(args):
 
         # hparams
         f.write(struct.pack("i", GGML_FILE_MAGIC))
+        f.write(struct.pack("i", config["vocab_size"]))
         f.write(struct.pack("i", config["hidden_size"]))
+        f.write(struct.pack("i", config["intermediate_size"]))
+        f.write(struct.pack("i", len(config["id2label"])))
+        f.write(struct.pack("i", config["num_attention_heads"]))
+        f.write(struct.pack("i", config["max_position_embeddings"]))
+        f.write(struct.pack("f", config["layer_norm_eps"]))
+        f.write(struct.pack("i", 1 if ftype == "f32" else 0))
         # TODO align hparams in bert.h
 
         for i in range(config["vocab_size"]):
