@@ -112,7 +112,7 @@ extern "C"
 
     int bert_predict();
     std::vector<int> bert_batch_predict();
-    bool bert_model_load(const std::string &fname, bert_model &model);
+    bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);
 
 #ifdef __cplusplus
 }

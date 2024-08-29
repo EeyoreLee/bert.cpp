@@ -12,7 +12,7 @@ std::vector<int> bert_batch_predict() {
     return std::vector<int>{1, 2};
 };
 
-bool bert_model_load(const std::string &fname, bert_model &model)
+bool bert_model_load_from_ggml(const std::string &fname, bert_model &model)
 {
     printf("%s: loading model from '%s' - please wait ...\n", __func__, fname.c_str());
 
@@ -95,23 +95,26 @@ bool bert_model_load(const std::string &fname, bert_model &model)
 
         // `BertForSequenceClassification` model
         {
-            ctx_size += hidden_size * vocab_size * ggml_type_sizef(wtype);                            // word_embeddings.weight
-            ctx_size += hidden_size * max_position_embeddings * ggml_type_sizef(wtype);               // position_embeddings.weight
-            ctx_size += hidden_size * 2 * ggml_type_sizef(wtype);                                     // token_type_embeddings.weight
-            ctx_size += 2 * hidden_size * ggml_type_sizef(GGML_TYPE_F32);                             // embeddings.LayerNorm.weight + embeddings.LayerNorm.bias
-            ctx_size += 3 * num_hidden_layers * hidden_size * hidden_size * ggml_type_sizef(wtype);   // qkv weight
-            ctx_size += 3 * num_hidden_layers * hidden_size * ggml_type_sizef(GGML_TYPE_F32);         // qkv bias
-            ctx_size += num_hidden_layers * hidden_size * hidden_size * ggml_type_sizef(wtype);       // encoder.layer.*.attention.output.dense.weight
-            ctx_size += num_hidden_layers * hidden_size * ggml_type_sizef(GGML_TYPE_F32);             // encoder.layer.*.attention.output.dense.bias
-            ctx_size += num_hidden_layers * 2 * hidden_size * ggml_type_sizef(GGML_TYPE_F32);         // encoder.layer.*.attention.output.LayerNorm.weight + bias
-            ctx_size += num_hidden_layers * intermediate_size * hidden_size * ggml_type_sizef(wtype); // encoder.layer.*.intermediate.dense.weight
-            ctx_size += num_hidden_layers * intermediate_size * ggml_type_sizef(GGML_TYPE_F32);       // encoder.layer.*.intermediate.dense.bias
-            ctx_size += hidden_size * hidden_size * ggml_type_sizef(GGML_TYPE_F32);                   // pooler.dense.weight
-            ctx_size += hidden_size * ggml_type_sizef(GGML_TYPE_F32);                                 // pooler.dense.bias
-            ctx_size += hidden_size * num_labels * ggml_type_sizef(GGML_TYPE_F32);                    // classifier.weight
-            ctx_size += num_labels * ggml_type_sizef(GGML_TYPE_F32);                                  // classifier.bias
+            ctx_size += ggml_row_size(wtype, hidden_size * vocab_size);                            // word_embeddings.weight
+            ctx_size += ggml_row_size(wtype, hidden_size * max_position_embeddings);               // position_embeddings.weight
+            ctx_size += ggml_row_size(wtype, hidden_size * 2);                                     // token_type_embeddings.weight
+            ctx_size += 2 * ggml_row_size(GGML_TYPE_F32, hidden_size);                             // embeddings.LayerNorm.weight + embeddings.LayerNorm.bias
+            ctx_size += 3 * num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);   // qkv weight
+            ctx_size += 3 * num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);         // qkv bias
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * hidden_size);       // encoder.layer.*.attention.output.dense.weight
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);             // encoder.layer.*.attention.output.dense.bias
+            ctx_size += num_hidden_layers * 2 * ggml_row_size(GGML_TYPE_F32, hidden_size);         // encoder.layer.*.attention.output.LayerNorm.weight + bias
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, intermediate_size * hidden_size); // encoder.layer.*.intermediate.dense.weight
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, intermediate_size);       // encoder.layer.*.intermediate.dense.bias
+            ctx_size += num_hidden_layers * ggml_row_size(wtype, hidden_size * intermediate_size); // encoder.layer.*.output.dense.weight
+            ctx_size += num_hidden_layers * ggml_row_size(GGML_TYPE_F32, hidden_size);             // encoder.layer.*.output.dense.bias
+            ctx_size += num_hidden_layers * 2 * ggml_row_size(GGML_TYPE_F32, hidden_size);         // encoder.layer.*.output.LayerNorm.weight + bias
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size * hidden_size);                   // pooler.dense.weight
+            ctx_size += ggml_row_size(GGML_TYPE_F32, hidden_size);                                 // pooler.dense.bias
+            ctx_size += ggml_row_size(wtype, hidden_size * num_labels);                            // classifier.weight
+            ctx_size += ggml_row_size(GGML_TYPE_F32, num_labels);                                  // classifier.bias
 
-            ctx_size += (5 + 10 * num_hidden_layers) * 512; // object overhead
+            ctx_size += (5 + 20 * num_hidden_layers) * 512; // object overhead
 
             printf("%s: ggml ctx cost %6.2f MB\n", __func__, ctx_size / 1024.0 / 1024.0);
         }
@@ -128,7 +131,7 @@ bool bert_model_load(const std::string &fname, bert_model &model)
             .no_alloc = false,
         };
         ctx = ggml_init(params);
-        if (ctx)
+        if (!ctx)
         {
             fprintf(stderr, "%s: ggml_init() failed\n", __func__);
             return false;
@@ -155,11 +158,11 @@ bool bert_model_load(const std::string &fname, bert_model &model)
             model.embedding.ln_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
             // map by name
-            model.tensors["embeddings.word_embeddings.weight"] = model.embedding.word_embeddings;
-            model.tensors["embeddings.position_embeddings.weight"] = model.embedding.position_embeddings;
-            model.tensors["embeddings.token_type_embeddings.weight"] = model.embedding.token_type_embeddings;
-            model.tensors["embeddings.LayerNorm.weight"] = model.embedding.ln_w;
-            model.tensors["embeddings.LayerNorm.bias"] = model.embedding.ln_b;
+            model.tensors["bert.embeddings.word_embeddings.weight"] = model.embedding.word_embeddings;
+            model.tensors["bert.embeddings.position_embeddings.weight"] = model.embedding.position_embeddings;
+            model.tensors["bert.embeddings.token_type_embeddings.weight"] = model.embedding.token_type_embeddings;
+            model.tensors["bert.embeddings.LayerNorm.weight"] = model.embedding.ln_w;
+            model.tensors["bert.embeddings.LayerNorm.bias"] = model.embedding.ln_b;
         }
 
         // bert_encoder
@@ -169,7 +172,7 @@ bool bert_model_load(const std::string &fname, bert_model &model)
 
             // bert_self_attention
             layer.attention.self_attention.q_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
-            layer.attention.self_attention.q_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, hidden_size);
+            layer.attention.self_attention.q_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
             layer.attention.self_attention.k_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
             layer.attention.self_attention.k_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
             layer.attention.self_attention.v_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, hidden_size);
@@ -186,28 +189,28 @@ bool bert_model_load(const std::string &fname, bert_model &model)
             layer.intermediate.linear_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, intermediate_size);
 
             // bert_output
-            layer.output.linear_w = ggml_new_tensor_2d(ctx, wtype, hidden_size, intermediate_size);
-            layer.output.linear_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, intermediate_size);
+            layer.output.linear_w = ggml_new_tensor_2d(ctx, wtype, intermediate_size, hidden_size);
+            layer.output.linear_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
             layer.output.ln_w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
             layer.output.ln_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
             // map by name
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.self.query.weight"] = layer.attention.self_attention.q_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.self.query.bias"] = layer.attention.self_attention.q_b;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.self.key.weight"] = layer.attention.self_attention.k_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.self.key.bias"] = layer.attention.self_attention.k_b;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.self.value.weight"] = layer.attention.self_attention.v_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.self.value.bias"] = layer.attention.self_attention.v_b;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.weight"] = layer.attention.self_output.linear_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.dense.bias"] = layer.attention.self_output.linear_b;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.LayerNorm.weight"] = layer.attention.self_output.ln_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".attention.output.LayerNorm.bias"] = layer.attention.self_output.ln_b;
-            model.tensors["encoder.layer." + std::to_string(i) + ".intermediate.dense.weight"] = layer.intermediate.linear_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".intermediate.dense.bias"] = layer.intermediate.linear_b;
-            model.tensors["encoder.layer." + std::to_string(i) + ".output.dense.weight"] = layer.output.linear_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".output.dense.bias"] = layer.output.linear_b;
-            model.tensors["encoder.layer." + std::to_string(i) + ".output.LayerNorm.weight"] = layer.output.ln_w;
-            model.tensors["encoder.layer." + std::to_string(i) + ".output.LayerNorm.bias"] = layer.output.ln_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.self.query.weight"] = layer.attention.self_attention.q_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.self.query.bias"] = layer.attention.self_attention.q_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.self.key.weight"] = layer.attention.self_attention.k_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.self.key.bias"] = layer.attention.self_attention.k_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.self.value.weight"] = layer.attention.self_attention.v_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.self.value.bias"] = layer.attention.self_attention.v_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.output.dense.weight"] = layer.attention.self_output.linear_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.output.dense.bias"] = layer.attention.self_output.linear_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.output.LayerNorm.weight"] = layer.attention.self_output.ln_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".attention.output.LayerNorm.bias"] = layer.attention.self_output.ln_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".intermediate.dense.weight"] = layer.intermediate.linear_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".intermediate.dense.bias"] = layer.intermediate.linear_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".output.dense.weight"] = layer.output.linear_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".output.dense.bias"] = layer.output.linear_b;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".output.LayerNorm.weight"] = layer.output.ln_w;
+            model.tensors["bert.encoder.layer." + std::to_string(i) + ".output.LayerNorm.bias"] = layer.output.ln_b;
         }
 
         // bert_pooler
@@ -216,8 +219,8 @@ bool bert_model_load(const std::string &fname, bert_model &model)
             model.pooler.linear_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, hidden_size);
 
             // map by name
-            model.tensors["pooler.dense.weight"] = model.pooler.linear_w;
-            model.tensors["pooler.dense.bias"] = model.pooler.linear_b;
+            model.tensors["bert.pooler.dense.weight"] = model.pooler.linear_w;
+            model.tensors["bert.pooler.dense.bias"] = model.pooler.linear_b;
         }
 
         // bert_classifier
@@ -252,8 +255,68 @@ bool bert_model_load(const std::string &fname, bert_model &model)
             {
                 break;
             }
+
+            int32_t nelements = 1;
+            int32_t ne[2] = {1, 1};
+            for (int i = 0; i < n_dims; ++i)
+            {
+                fin.read(reinterpret_cast<char *>(&ne[i]), sizeof(ne[i]));
+                nelements *= ne[i];
+            }
+
+            std::string name(length, 0);
+            fin.read(&name[0], length);
+
+            if (model.tensors.find(name) == model.tensors.end())
+            {
+                fprintf(stderr, "%s: unknown tensor '%s' in model file\n", __func__, name.c_str());
+                return false;
+            }
+
+            auto tensor = model.tensors[name];
+            if (ggml_nelements(tensor) != nelements)
+            {
+                fprintf(stderr, "%s: tensor '%s' has wrong size in model file\n", __func__, name.c_str());
+                return false;
+            }
+
+            if (tensor->ne[0] != ne[0] || tensor->ne[1] != ne[1])
+            {
+                fprintf(stderr, "%s: tensor '%s' has wrong shape in model file: got [%d, %d], expected [%d, %d]\n",
+                        __func__, name.c_str(), (int)tensor->ne[0], (int)tensor->ne[1], ne[0], ne[1]);
+                return false;
+            }
+
+            // for debugging
+            if (0)
+            {
+                printf("%24s - [%5d, %5d], type = %6s, %6.2f MB, %9zu bytes\n", name.c_str(), ne[0], ne[1], ggml_type_name(ggml_type(ttype)), ggml_nbytes(tensor) / 1024.0 / 1024.0, ggml_nbytes(tensor));
+            }
+
+            const size_t bpe = ggml_type_size(ggml_type(ttype));
+            if ((nelements * bpe) / ggml_blck_size(tensor->type) != ggml_nbytes(tensor))
+            {
+                fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %zu, expected %zu\n",
+                        __func__, name.c_str(), ggml_nbytes(tensor), nelements * bpe);
+                return false;
+            }
+
+            fin.read(reinterpret_cast<char *>(tensor->data), ggml_nbytes(tensor));
+
+            total_size += ggml_nbytes(tensor);
+            if (++n_tensors % 8 == 0)
+            {
+                printf(".");
+                fflush(stdout);
+            }
         }
+
+        printf(" done\n");
+
+        printf("%s: model size = %8.2f MB / num tensors = %d\n", __func__, total_size / 1024.0 / 1024.0, n_tensors);
     }
+
+    fin.close();
 
     return true;
 };
