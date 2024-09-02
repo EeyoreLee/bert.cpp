@@ -33,7 +33,7 @@
             "program": "${file}",
             "console": "internalConsole",
             "args": [
-                "/media/E/lichunyu/models/pretrained_models/bert-tiny-chinese",
+                "/media/E/lichunyu/bert.cpp/data/example_bert_tiny_chinese",
                 "--save",
                 "${workspaceFolder}/data/ggml-model"
             ]

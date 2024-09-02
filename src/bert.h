@@ -14,10 +14,16 @@ extern "C"
 
     struct bert_hparams
     {
-        int32_t hidden_size = 768;
-        int32_t num_labels = 1000;
-        int32_t num_attention_heads = 12;
-        int32_t ftype = 1;
+        int32_t vocab_size;
+        int32_t hidden_size;
+        int32_t intermediate_size;
+        int32_t num_labels;
+        int32_t num_attention_heads;
+        int32_t num_hidden_layers;
+        int32_t max_position_embeddings;
+        float layer_norm_eps;
+
+        int32_t ftype;
     };
 
     struct bert_embedding
@@ -81,16 +87,14 @@ extern "C"
 
     struct bert_pooler
     {
-        struct ggml_tensor linear_w;
-        struct ggml_tensor linear_b;
+        struct ggml_tensor *linear_w;
+        struct ggml_tensor *linear_b;
     };
 
     struct bert_classifier
     {
-        struct ggml_tensor linear_w;
-        struct ggml_tensor linear_b;
-        struct ggml_tensor ln_w;
-        struct ggml_tensor ln_b;
+        struct ggml_tensor *linear_w;
+        struct ggml_tensor *linear_b;
     };
 
     struct bert_model
@@ -108,7 +112,7 @@ extern "C"
 
     int bert_predict();
     std::vector<int> bert_batch_predict();
-    bool bert_model_load(const std::string &fname, bert_model &model);
+    bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);
 
 #ifdef __cplusplus
 }
