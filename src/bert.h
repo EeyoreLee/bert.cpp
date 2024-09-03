@@ -2,6 +2,7 @@
 #define BERT_H
 
 #include "ggml.h"
+#include "tokenizers_cpp.h"
 
 #include <vector>
 #include <map>
@@ -108,6 +109,20 @@ extern "C"
 
         struct ggml_context *ctx;
         std::map<std::string, struct ggml_tensor *> tensors;
+    };
+
+    struct bert_tokenizer
+    {
+        std::shared_ptr<tokenizers::Tokenizer> tok;
+
+        bool from_file(const std::string &path);
+        std::vector<int> encode(const std::string &text);
+    };
+
+    struct bert_ctx
+    {
+        bert_model model;
+        bert_tokenizer tokenizer;
     };
 
     int bert_predict();

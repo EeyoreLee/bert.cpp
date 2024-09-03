@@ -1,8 +1,41 @@
 #include "bert.h"
 #include "ggml.h"
+#include "tokenizers_cpp.h"
 
 #include <vector>
 #include <fstream>
+#include <iostream>
+
+bool bert_tokenizer::from_file(const std::string &path)
+{
+    std::ifstream fs(path, std::ios::in | std::ios::binary);
+    if (fs.fail())
+    {
+        std::cerr << "Cannot open " << path << std::endl;
+        exit(1);
+    }
+    std::string data;
+    fs.seekg(0, std::ios::end);
+    size_t size = static_cast<size_t>(fs.tellg());
+    fs.seekg(0, std::ios::beg);
+    data.resize(size);
+    fs.read(data.data(), size);
+
+    // load
+    this->tok = tokenizers::Tokenizer::FromBlobJSON(data);
+    if (!this->tok)
+    {
+        std::cerr << "Wrong tokenizer.json" << path << std::endl;
+        return false;
+    }
+    return true;
+};
+
+std::vector<int> bert_tokenizer::encode(const std::string &text)
+{
+    std::vector<int> ids = this->tok.get()->Encode(text);
+    return ids;
+};
 
 int bert_predict() {
     return 0;
