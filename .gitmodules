@@ -1,3 +1,6 @@
 [submodule "ggml"]
 	path = ggml
 	url = git@github.com:ggerganov/ggml.git
+[submodule "tokenizers-cpp"]
+	path = tokenizers-cpp
+	url = git@github.com:mlc-ai/tokenizers-cpp.git
