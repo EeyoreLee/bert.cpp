@@ -4,7 +4,7 @@
 @author: lichunyu
 '''
 import gguf
-from transformers import BertTokenizer
+from transformers import BertTokenizer, BertForSequenceClassification
 
 
 class BertModel(object):

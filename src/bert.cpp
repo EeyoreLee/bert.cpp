@@ -3,8 +3,10 @@
 #include "tokenizers_cpp.h"
 
 #include <vector>
+#include <math.h>
 #include <fstream>
 #include <iostream>
+#include <cstring>
 
 bool bert_tokenizer::from_file(const std::string &path)
 {
@@ -352,4 +354,99 @@ bool bert_model_load_from_ggml(const std::string &fname, bert_model &model)
     fin.close();
 
     return true;
+};
+
+static struct ggml_cgraph *bert_build(bert_ctx &ctx, struct ggml_context *ctx0, bert_tokens *tokens)
+{
+    const size_t N = tokens->size;
+
+    bert_model &model = ctx.model;
+    const float layer_norm_eps = model.hparams.layer_norm_eps;
+    const int32_t num_hidden_layers = model.hparams.num_hidden_layers;
+    const int32_t num_attention_heads = model.hparams.num_attention_heads;
+    const int32_t hidden_size = model.hparams.hidden_size;
+    const int32_t attention_head_size = hidden_size / num_attention_heads;
+
+    ggml_cgraph *gf = ggml_new_graph(ctx0);
+
+    struct ggml_tensor *input_ids = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    std::memcpy(input_ids->data, tokens->ids, N * ggml_element_size(input_ids));
+
+    struct ggml_tensor *token_type_ids = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    ggml_set_zero(token_type_ids);
+
+    struct ggml_tensor *position_ids = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
+    for (int i = 0; i < N; ++i)
+    {
+        ggml_set_i32_1d(position_ids, i, i);
+    }
+
+    // bert_embeddings
+    struct ggml_tensor *embeddings = ggml_get_rows(ctx0, model.embedding.word_embeddings, input_ids);
+    embeddings = ggml_add(ctx0, ggml_get_rows(ctx0, model.embedding.token_type_embeddings, token_type_ids), embeddings);
+    embeddings = ggml_add(ctx0, ggml_get_rows(ctx0, model.embedding.position_embeddings, position_ids), embeddings);
+
+    embeddings = ggml_norm(ctx0, embeddings, layer_norm_eps);
+    embeddings = ggml_add(ctx0, ggml_mul(ctx0, ggml_repeat(ctx0, model.embedding.ln_w, embeddings), embeddings), ggml_repeat(ctx0, model.embedding.ln_b, embeddings));
+
+    struct ggml_tensor *hidden_states = embeddings;
+
+    // bert_encoder
+    for (int i = 0; i < num_hidden_layers; ++i)
+    {
+        struct ggml_tensor *layer_outputs = hidden_states; // for residual
+
+        {
+            struct ggml_tensor *query_layer = layer_outputs;
+            query_layer = ggml_add(ctx0, ggml_mul_mat(ctx0, model.encoder.layers[i].attention.self_attention.q_w, query_layer), ggml_repeat(ctx0, model.encoder.layers[i].attention.self_attention.q_b, query_layer));
+            query_layer = ggml_reshape_3d(ctx0, query_layer, attention_head_size, num_attention_heads, N);
+            query_layer = ggml_permute(ctx0, query_layer, 0, 2, 1, 3);
+
+            struct ggml_tensor *key_layer = layer_outputs;
+            key_layer = ggml_add(ctx0, ggml_mul_mat(ctx0, model.encoder.layers[i].attention.self_attention.k_w, key_layer), ggml_repeat(ctx0, model.encoder.layers[i].attention.self_attention.k_b, key_layer));
+            key_layer = ggml_reshape_3d(ctx0, key_layer, attention_head_size, num_attention_heads, N);
+            key_layer = ggml_permute(ctx0, key_layer, 0, 2, 1, 3);
+
+            struct ggml_tensor *value_layer = layer_outputs;
+            value_layer = ggml_add(ctx0, ggml_mul_mat(ctx0, model.encoder.layers[i].attention.self_attention.v_w, value_layer), ggml_repeat(ctx0, model.encoder.layers[i].attention.self_attention.v_b, value_layer));
+            value_layer = ggml_reshape_3d(ctx0, value_layer, attention_head_size, num_attention_heads, N);
+            value_layer = ggml_permute(ctx0, value_layer, 0, 2, 1, 3);
+
+            struct ggml_tensor *attention_scores = ggml_mul_mat(ctx0, query_layer, key_layer);
+            attention_scores = ggml_scale(ctx0, attention_scores, 1.0f / sqrt((float)attention_head_size));
+            struct ggml_tensor *attention_probs = ggml_soft_max(ctx0, attention_scores);
+            // attention_probs * head_mask for batch predict
+            struct ggml_tensor *context_layer = ggml_mul_mat(ctx0, attention_probs, ggml_cont(ctx0, ggml_transpose(ctx0, value_layer)));
+            context_layer = ggml_permute(ctx0, context_layer, 0, 2, 1, 3);
+            layer_outputs = ggml_cpy(ctx0, context_layer, ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, hidden_size, N));
+        }
+        layer_outputs = ggml_add(ctx0, ggml_mul_mat(ctx0, model.encoder.layers[i].attention.self_output.linear_w, layer_outputs), ggml_repeat(ctx0, model.encoder.layers[i].attention.self_output.linear_b, layer_outputs));
+
+        // residual
+        layer_outputs = ggml_add(ctx0, layer_outputs, hidden_states);
+
+        layer_outputs = ggml_norm(ctx0, layer_outputs, layer_norm_eps);
+        layer_outputs = ggml_add(ctx0, ggml_mul(ctx0, ggml_repeat(ctx0, model.encoder.layers[i].attention.self_output.ln_w, layer_outputs), layer_outputs), ggml_repeat(ctx0, model.encoder.layers[i].attention.self_output.ln_b, layer_outputs));
+
+        struct ggml_tensor *self_output = layer_outputs;
+
+        self_output = ggml_mul_mat(ctx0, model.encoder.layers[i].intermediate.linear_w, self_output);
+        self_output = ggml_add(ctx0, ggml_repeat(ctx0, model.encoder.layers[i].intermediate.linear_b, self_output), self_output);
+        self_output = ggml_gelu(ctx0, self_output);
+        struct ggml_tensor *intermediate_output = self_output;
+
+        intermediate_output = ggml_mul_mat(ctx0, model.encoder.layers[i].output.linear_w, intermediate_output);
+        intermediate_output = ggml_add(ctx0, ggml_repeat(ctx0, model.encoder.layers[i].output.linear_b, intermediate_output), intermediate_output);
+        // residual
+        intermediate_output = ggml_add(ctx0, intermediate_output, layer_outputs);
+
+        intermediate_output = ggml_norm(ctx0, intermediate_output, layer_norm_eps);
+        intermediate_output = ggml_add(ctx0, ggml_mul(ctx0, ggml_repeat(ctx0, model.encoder.layers[i].output.ln_w, intermediate_output), intermediate_output), ggml_repeat(ctx0, model.encoder.layers[i].output.ln_b, intermediate_output));
+
+        hidden_states = intermediate_output;
+    }
+
+    hidden_states = ggml_cont(ctx0, ggml_transpose(ctx0, hidden_states));
+
+    // [CLS]
 };

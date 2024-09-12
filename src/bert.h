@@ -13,6 +13,14 @@ extern "C"
 {
 #endif
 
+    typedef int32_t bert_vocab_id;
+
+    struct bert_tokens
+    {
+        bert_vocab_id *ids;
+        size_t size;
+    };
+
     struct bert_hparams
     {
         int32_t vocab_size;
