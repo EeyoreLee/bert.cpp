@@ -36,7 +36,8 @@
                 "/media/E/lichunyu/bert.cpp/data/example_bert_tiny_chinese",
                 "--save",
                 "${workspaceFolder}/data/ggml-model"
-            ]
+            ],
+            "justMyCode": false
         }
     ],
     "version": "2.0.0"

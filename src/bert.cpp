@@ -36,11 +36,9 @@ bool bert_tokenizer::from_file(const std::string &path)
 std::vector<int> bert_tokenizer::encode(const std::string &text)
 {
     std::vector<int> ids = this->tok.get()->Encode(text);
+    ids.insert(ids.begin(), this->cls_id);
+    ids.push_back(this->seq_id);
     return ids;
-};
-
-int bert_predict() {
-    return 0;
 };
 
 std::vector<int> bert_batch_predict() {
@@ -356,11 +354,11 @@ bool bert_model_load_from_ggml(const std::string &fname, bert_model &model)
     return true;
 };
 
-static struct ggml_cgraph *bert_build(bert_ctx &ctx, struct ggml_context *ctx0, bert_tokens *tokens)
+static struct ggml_cgraph *bert_build(bert_ctx *ctx, struct ggml_context *ctx0, bert_tokens &tokens)
 {
-    const size_t N = tokens->size;
+    const size_t N = tokens.size;
 
-    bert_model &model = ctx.model;
+    bert_model &model = ctx->model;
     const float layer_norm_eps = model.hparams.layer_norm_eps;
     const int32_t num_hidden_layers = model.hparams.num_hidden_layers;
     const int32_t num_attention_heads = model.hparams.num_attention_heads;
@@ -370,7 +368,7 @@ static struct ggml_cgraph *bert_build(bert_ctx &ctx, struct ggml_context *ctx0, 
     ggml_cgraph *gf = ggml_new_graph(ctx0);
 
     struct ggml_tensor *input_ids = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
-    std::memcpy(input_ids->data, tokens->ids, N * ggml_element_size(input_ids));
+    std::memcpy(input_ids->data, tokens.ids, N * ggml_element_size(input_ids));
 
     struct ggml_tensor *token_type_ids = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
     ggml_set_zero(token_type_ids);
@@ -414,14 +412,19 @@ static struct ggml_cgraph *bert_build(bert_ctx &ctx, struct ggml_context *ctx0, 
 
             struct ggml_tensor *attention_scores = ggml_mul_mat(ctx0, query_layer, key_layer);
             attention_scores = ggml_scale(ctx0, attention_scores, 1.0f / sqrt((float)attention_head_size));
+            attention_scores = ggml_cont(ctx0, ggml_transpose(ctx0, attention_scores));
             struct ggml_tensor *attention_probs = ggml_soft_max(ctx0, attention_scores);
+
             // attention_probs * head_mask for batch predict
             struct ggml_tensor *context_layer = ggml_mul_mat(ctx0, attention_probs, ggml_cont(ctx0, ggml_transpose(ctx0, value_layer)));
             context_layer = ggml_permute(ctx0, context_layer, 0, 2, 1, 3);
             layer_outputs = ggml_cpy(ctx0, context_layer, ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, hidden_size, N));
         }
+
         layer_outputs = ggml_add(ctx0, ggml_mul_mat(ctx0, model.encoder.layers[i].attention.self_output.linear_w, layer_outputs), ggml_repeat(ctx0, model.encoder.layers[i].attention.self_output.linear_b, layer_outputs));
 
+        ggml_build_forward_expand(gf, layer_outputs);
+        return gf;
         // residual
         layer_outputs = ggml_add(ctx0, layer_outputs, hidden_states);
 
@@ -446,7 +449,47 @@ static struct ggml_cgraph *bert_build(bert_ctx &ctx, struct ggml_context *ctx0, 
         hidden_states = intermediate_output;
     }
 
-    hidden_states = ggml_cont(ctx0, ggml_transpose(ctx0, hidden_states));
+    // hidden_states = ggml_cont(ctx0, ggml_transpose(ctx0, hidden_states));
+    hidden_states = ggml_cont(ctx0, hidden_states);
 
     // [CLS]
+    struct ggml_tensor *cls_token = ggml_new_i32(ctx0, 0);
+    struct ggml_tensor *sequence_output = ggml_get_rows(ctx0, hidden_states, cls_token);
+
+    struct ggml_tensor *pooled_output = ggml_add(ctx0, ggml_mul_mat(ctx0, model.pooler.linear_w, sequence_output), ggml_repeat(ctx0, model.pooler.linear_b, sequence_output));
+    pooled_output = ggml_tanh(ctx0, pooled_output);
+
+    // classifier
+    struct ggml_tensor *logits = ggml_add(ctx0, ggml_mul_mat(ctx0, model.classifier.linear_w, pooled_output), model.classifier.linear_b);
+
+    ggml_build_forward_expand(gf, logits);
+
+    return gf;
+};
+
+int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads)
+{
+    bert_tokenizer &tokenizer = ctx->tokenizer;
+    std::vector<int> ids = tokenizer.encode(text);
+
+    const bert_model &model = ctx->model;
+    bert_buffer &buf_computer = ctx->buf_compute;
+
+    struct ggml_init_params params =
+        {
+            .mem_size = buf_computer.size,
+            .mem_buffer = buf_computer.data,
+            .no_alloc = false,
+        };
+
+    struct ggml_context *ctx0 = ggml_init(params);
+    bert_tokens token = {
+        .ids = ids.data(),
+        .size = ids.size()};
+    ggml_cgraph *gf = bert_build(ctx, ctx0, token);
+    ggml_graph_compute_with_ctx(ctx0, gf, n_threads);
+    ggml_free(ctx0);
+
+    struct ggml_tensor *logits = gf->nodes[gf->n_nodes - 1];
+    return 0;
 };

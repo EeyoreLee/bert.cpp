@@ -122,18 +122,37 @@ extern "C"
     struct bert_tokenizer
     {
         std::shared_ptr<tokenizers::Tokenizer> tok;
+        int cls_id = 101;
+        int seq_id = 102;
 
         bool from_file(const std::string &path);
         std::vector<int> encode(const std::string &text);
+    };
+
+    // Replacement for std::vector<uint8_t> that doesn't require zero-initialization.
+    struct bert_buffer
+    {
+        uint8_t *data = NULL;
+        size_t size = 0;
+
+        void resize(size_t size)
+        {
+            delete[] data;
+            data = new uint8_t[size];
+            this->size = size;
+        }
+
+        ~bert_buffer() { delete[] data; }
     };
 
     struct bert_ctx
     {
         bert_model model;
         bert_tokenizer tokenizer;
+        bert_buffer buf_compute;
     };
 
-    int bert_predict();
+    int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads);
     std::vector<int> bert_batch_predict();
     bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);
 
