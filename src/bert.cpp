@@ -417,14 +417,12 @@ static struct ggml_cgraph *bert_build(bert_ctx *ctx, struct ggml_context *ctx0, 
 
             // attention_probs * head_mask for batch predict
             struct ggml_tensor *context_layer = ggml_mul_mat(ctx0, attention_probs, ggml_cont(ctx0, ggml_transpose(ctx0, value_layer)));
-            context_layer = ggml_permute(ctx0, context_layer, 0, 2, 1, 3);
+            context_layer = ggml_permute(ctx0, context_layer, 2, 0, 1, 3);
             layer_outputs = ggml_cpy(ctx0, context_layer, ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, hidden_size, N));
         }
 
         layer_outputs = ggml_add(ctx0, ggml_mul_mat(ctx0, model.encoder.layers[i].attention.self_output.linear_w, layer_outputs), ggml_repeat(ctx0, model.encoder.layers[i].attention.self_output.linear_b, layer_outputs));
 
-        ggml_build_forward_expand(gf, layer_outputs);
-        return gf;
         // residual
         layer_outputs = ggml_add(ctx0, layer_outputs, hidden_states);
 
