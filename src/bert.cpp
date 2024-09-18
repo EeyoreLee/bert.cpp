@@ -460,7 +460,9 @@ static struct ggml_cgraph *bert_build(bert_ctx *ctx, struct ggml_context *ctx0, 
     // classifier
     struct ggml_tensor *logits = ggml_add(ctx0, ggml_mul_mat(ctx0, model.classifier.linear_w, pooled_output), model.classifier.linear_b);
 
-    ggml_build_forward_expand(gf, logits);
+    struct ggml_tensor *classification = ggml_argmax(ctx0, logits);
+
+    ggml_build_forward_expand(gf, classification);
 
     return gf;
 };
@@ -488,6 +490,6 @@ int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads)
     ggml_graph_compute_with_ctx(ctx0, gf, n_threads);
     ggml_free(ctx0);
 
-    struct ggml_tensor *logits = gf->nodes[gf->n_nodes - 1];
-    return 0;
+    struct ggml_tensor *classification = gf->nodes[gf->n_nodes - 1];
+    return *((int *)classification->data);
 };
