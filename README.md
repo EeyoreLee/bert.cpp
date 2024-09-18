@@ -6,7 +6,18 @@ BERT inference in C/C++ and Rust
 
 ## Tokenizer performance
 
-|           Tokenizer type            | time cost |
+|           Tokenizer type            | cost time |
 | :---------------------------------: | :-------: |
 | transformers.BertTokenizer (Python) |   697ms   |
 |    tokenizers-cpp (binding Rust)    |   19ms    |
+
+
+## Single sentence inference performance
+|               Type               | cost time |
+| :------------------------------: | :-------: |
+|        Python W/O Loading        |   232ms   |
+| C++&Rust W/O loading(n_thread=1) |   48ms    |
+| C++&Rust W/O loading(n_thread=4) |   11ms    |
+|         Python W Loading         |  1092ms   |
+|  C++&Rust W loading(n_thread=1)  |   114ms   |
+|  C++&Rust W loading(n_thread=4)  |   79ms    |
