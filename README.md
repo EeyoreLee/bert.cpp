@@ -16,8 +16,8 @@ BERT inference in C/C++ and Rust
 |               Type               | cost time |
 | :------------------------------: | :-------: |
 |        Python W/O Loading        |   232ms   |
-| C++&Rust W/O loading(n_thread=1) |   48ms    |
-| C++&Rust W/O loading(n_thread=4) |   11ms    |
+| C++&Rust W/O Loading(n_thread=1) |   48ms    |
+| C++&Rust W/O Loading(n_thread=4) |   11ms    |
 |         Python W Loading         |  1092ms   |
-|  C++&Rust W loading(n_thread=1)  |   114ms   |
-|  C++&Rust W loading(n_thread=4)  |   79ms    |
+|  C++&Rust W Loading(n_thread=1)  |   114ms   |
+|  C++&Rust W Loading(n_thread=4)  |   79ms    |
