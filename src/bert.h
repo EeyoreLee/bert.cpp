@@ -21,6 +21,13 @@ extern "C"
         size_t size;
     };
 
+    struct bert_batch_tokens
+    {
+        bert_vocab_id **ids;
+        size_t size;
+        int32_t batch_size;
+    };
+
     struct bert_hparams
     {
         int32_t vocab_size;
@@ -124,9 +131,11 @@ extern "C"
         std::shared_ptr<tokenizers::Tokenizer> tok;
         int cls_id = 101;
         int seq_id = 102;
+        int pad_id = 0;
 
         bool from_file(const std::string &path);
         std::vector<int> encode(const std::string &text);
+        std::vector<std::vector<int>> batch_encode(const std::vector<std::string> &batch_text);
     };
 
     // Replacement for std::vector<uint8_t> that doesn't require zero-initialization.
