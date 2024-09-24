@@ -16,8 +16,18 @@ BERT inference in C/C++ and Rust
 |               Type               | cost time |
 | :------------------------------: | :-------: |
 |        Python W/O Loading        |   232ms   |
-| C++&Rust W/O loading(n_thread=1) |   48ms    |
-| C++&Rust W/O loading(n_thread=4) |   11ms    |
+| C++&Rust W/O Loading(n_thread=1) |   48ms    |
+| C++&Rust W/O Loading(n_thread=4) |   11ms    |
 |         Python W Loading         |  1092ms   |
-|  C++&Rust W loading(n_thread=1)  |   114ms   |
-|  C++&Rust W loading(n_thread=4)  |   79ms    |
+|  C++&Rust W Loading(n_thread=1)  |   114ms   |
+|  C++&Rust W Loading(n_thread=4)  |   79ms    |
+
+
+## Batch inference performance
+|          Type          | cost time |
+| :--------------------: | :-------: |
+|         Python         |   260ms   |
+| C++&Rust (n_thread=8)  |   120ms   |
+| C++&Rust (n_thread=32) |   70ms    |
+
+**ggml performance worse as sentence length increases**

@@ -35,3 +35,11 @@ target_link_libraries(test_tokenizer ggml tokenizers_cpp)
 add_executable(test_inference test/test_inference.cpp src/bert.cpp)
 target_include_directories(test_inference PRIVATE ${TOKENZIER_CPP_PATH}/include)
 target_link_libraries(test_inference ggml tokenizers_cpp)
+
+add_executable(test_batch_tokenizer test/test_batch_tokenizer.cpp src/bert.cpp)
+target_include_directories(test_batch_tokenizer PRIVATE ${TOKENZIER_CPP_PATH}/include)
+target_link_libraries(test_batch_tokenizer ggml tokenizers_cpp)
+
+add_executable(test_batch_inference test/test_batch_inference.cpp src/bert.cpp)
+target_include_directories(test_batch_inference PRIVATE ${TOKENZIER_CPP_PATH}/include)
+target_link_libraries(test_batch_inference ggml tokenizers_cpp)

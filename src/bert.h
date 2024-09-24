@@ -21,6 +21,16 @@ extern "C"
         size_t size;
     };
 
+    struct bert_batch_tokens
+    {
+        bert_vocab_id *ids;
+        size_t size;
+        int32_t batch_size;
+        int32_t *attention_mask;
+
+        void init_input_ids(std::vector<std::vector<int>> &input_ids, int32_t pad_id);
+    };
+
     struct bert_hparams
     {
         int32_t vocab_size;
@@ -124,9 +134,11 @@ extern "C"
         std::shared_ptr<tokenizers::Tokenizer> tok;
         int cls_id = 101;
         int seq_id = 102;
+        int pad_id = 0;
 
         bool from_file(const std::string &path);
         std::vector<int> encode(const std::string &text);
+        std::vector<std::vector<int>> batch_encode(const std::vector<std::string> &batch_text);
     };
 
     // Replacement for std::vector<uint8_t> that doesn't require zero-initialization.
@@ -153,7 +165,7 @@ extern "C"
     };
 
     int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads);
-    std::vector<int> bert_batch_predict();
+    std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string> &text_vec, int32_t n_threads);
     bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);
 
 #ifdef __cplusplus
