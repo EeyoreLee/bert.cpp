@@ -14,12 +14,15 @@ from transformers import BertForSequenceClassification, BertTokenizer
 model = BertForSequenceClassification.from_pretrained("/media/E/lichunyu/bert.cpp/data/example_bert_tiny_chinese")
 model.eval()
 tokenizer = BertTokenizer.from_pretrained("/media/E/lichunyu/bert.cpp/data/example_bert_tiny_chinese")
-text1 = "测试一下tokenizer返回的结果是否和python一致"
-text2 = "测试一下tokenizer返回的结果是否和python"
-text3 = "测试一下tokenizer返回的结果是"
-text4 = "测试一下tokenizer"
+text1 = "卫生间抽纸"
+text2 = "卫生间抽纸"
+text3 = "卫生间抽纸"
+text4 = "卫生间抽纸"
+batch_text = [text1, text2, text3, text4]
+for i in range(len(batch_text), 51):
+    batch_text.append(text4)
 st = time.time()
-inputs = tokenizer([text1, text2, text3, text4], return_tensors="pt", padding=True)
+inputs = tokenizer(batch_text, return_tensors="pt", padding=True)
 logits = model(**inputs).logits
-classification = np.argmax(logits.detach().numpy())
-print(f"Python   classification: {classification} and Python   without loading  cost: {int((time.time()-st)*1000)}ms.")
+classification = np.argmax(logits.detach().numpy(), axis=-1)
+print(f"Python   without loading  cost: {int((time.time()-st)*1000)}ms.")

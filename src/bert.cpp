@@ -8,6 +8,7 @@
 #include <iostream>
 #include <cstring>
 #include <limits>
+#include <chrono>
 
 bool bert_tokenizer::from_file(const std::string &path)
 {
@@ -507,7 +508,7 @@ static struct ggml_cgraph *bert_build(bert_ctx *ctx, struct ggml_context *ctx0, 
     return gf;
 };
 
-struct ggml_cgraph *bert_build_dynamic(bert_ctx *ctx, struct ggml_context *ctx0, bert_batch_tokens &tokens)
+static struct ggml_cgraph *bert_build_dynamic(bert_ctx *ctx, struct ggml_context *ctx0, bert_batch_tokens &tokens)
 {
     const size_t N = tokens.size;
     const int32_t batch_size = tokens.batch_size;
@@ -699,5 +700,6 @@ std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string
     ggml_free(ctx0);
 
     struct ggml_tensor *classification = gf->nodes[gf->n_nodes - 1];
+
     return std::vector<int>{(int *)classification->data, (int *)classification->data + classification->ne[0]};
 };
