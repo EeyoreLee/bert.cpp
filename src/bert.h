@@ -26,8 +26,9 @@ extern "C"
         bert_vocab_id *ids;
         size_t size;
         int32_t batch_size;
+        int32_t *attention_mask;
 
-        void init_input_ids(std::vector<std::vector<int>> &input_ids);
+        void init_input_ids(std::vector<std::vector<int>> &input_ids, int32_t pad_id);
     };
 
     struct bert_hparams

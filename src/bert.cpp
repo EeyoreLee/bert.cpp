@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <limits>
 
 bool bert_tokenizer::from_file(const std::string &path)
 {
@@ -58,15 +59,28 @@ std::vector<std::vector<int>> bert_tokenizer::batch_encode(const std::vector<std
     return batch_input_ids;
 }
 
-void bert_batch_tokens::init_input_ids(std::vector<std::vector<int>> &input_ids)
+void bert_batch_tokens::init_input_ids(std::vector<std::vector<int>> &input_ids, int32_t pad_id)
 {
     static std::vector<bert_vocab_id> flat{};
+    static std::vector<int32_t> mask{};
     for (const auto &ids : input_ids)
     {
         flat.insert(flat.end(), ids.begin(), ids.end());
     }
+    for (int32_t i : flat)
+    {
+        if (i == pad_id)
+        {
+            mask.push_back(1);
+        }
+        else
+        {
+            mask.push_back(0);
+        }
+    }
     this->ids = flat.data();
     this->size = flat.size();
+    this->attention_mask = mask.data();
     this->batch_size = input_ids.size();
     return;
 }
@@ -511,6 +525,22 @@ struct ggml_cgraph *bert_build_dynamic(bert_ctx *ctx, struct ggml_context *ctx0,
     struct ggml_tensor *input_ids = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
     std::memcpy(input_ids->data, tokens.ids, N * ggml_element_size(input_ids));
 
+    struct ggml_tensor *attention_mask = ggml_new_tensor_1d(ctx0, GGML_TYPE_F32, N);
+    for (int i = 0; i < N; ++i)
+    {
+        if (*(tokens.attention_mask + i) == 1)
+        {
+            ggml_set_f32_1d(attention_mask, i, -0x1.0p+127f);
+        }
+        else
+        {
+            ggml_set_f32_1d(attention_mask, i, 0.f);
+        }
+    }
+
+    attention_mask = ggml_reshape_2d(ctx0, attention_mask, length, batch_size);
+    attention_mask = ggml_permute(ctx0, attention_mask, 0, 3, 2, 1);
+
     struct ggml_tensor *token_type_ids = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
     ggml_set_zero(token_type_ids);
 
@@ -559,6 +589,7 @@ struct ggml_cgraph *bert_build_dynamic(bert_ctx *ctx, struct ggml_context *ctx0,
             struct ggml_tensor *attention_scores = ggml_mul_mat(ctx0, query_layer, key_layer);
             attention_scores = ggml_scale(ctx0, attention_scores, 1.0f / sqrt((float)attention_head_size));
             attention_scores = ggml_cont(ctx0, ggml_transpose(ctx0, attention_scores));
+            attention_scores = ggml_add(ctx0, attention_scores, attention_mask);
             struct ggml_tensor *attention_probs = ggml_soft_max(ctx0, attention_scores);
 
             // attention_probs * head_mask for batch predict
@@ -610,9 +641,6 @@ struct ggml_cgraph *bert_build_dynamic(bert_ctx *ctx, struct ggml_context *ctx0,
 
     // classifier
     struct ggml_tensor *logits = ggml_add(ctx0, ggml_mul_mat(ctx0, model.classifier.linear_w, pooled_output), model.classifier.linear_b);
-    ggml_build_forward_expand(gf, logits);
-
-    return gf;
 
     struct ggml_tensor *classification = ggml_argmax(ctx0, logits);
 
@@ -665,11 +693,11 @@ std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string
 
     struct ggml_context *ctx0 = ggml_init(params);
     bert_batch_tokens token;
-    token.init_input_ids(ids);
+    token.init_input_ids(ids, tokenizer.pad_id);
     ggml_cgraph *gf = bert_build_dynamic(ctx, ctx0, token);
     ggml_graph_compute_with_ctx(ctx0, gf, n_threads);
     ggml_free(ctx0);
 
     struct ggml_tensor *classification = gf->nodes[gf->n_nodes - 1];
-    return std::vector<int>{1, 2};
+    return std::vector<int>{(int *)classification->data, (int *)classification->data + classification->ne[0]};
 };
