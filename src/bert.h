@@ -23,9 +23,11 @@ extern "C"
 
     struct bert_batch_tokens
     {
-        bert_vocab_id **ids;
+        bert_vocab_id *ids;
         size_t size;
         int32_t batch_size;
+
+        void init_input_ids(std::vector<std::vector<int>> &input_ids);
     };
 
     struct bert_hparams
@@ -162,7 +164,7 @@ extern "C"
     };
 
     int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads);
-    std::vector<int> bert_batch_predict();
+    std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string> &text_vec, int32_t n_threads);
     bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);
 
 #ifdef __cplusplus
