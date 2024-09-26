@@ -168,6 +168,10 @@ extern "C"
     std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string> &text_vec, int32_t n_threads);
     bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);
 
+    // For Python
+    bert_ctx *py_bert_ctx_load_from_file(const char *fname, const char *tokenizer_json_fname, int32_t buf_compute);
+    int *py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads);
+
 #ifdef __cplusplus
 }
 #endif
