@@ -3,10 +3,10 @@ project(bert_cpp)
 
 include(CheckCXXCompilerFlag)
 
-# set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Release")
 
 # test
-option(BUILD_TESTS "build test entrance" ON)
+option(BUILD_TESTS "build test entrance" OFF)
 
 
 if(NOT MSVC)
@@ -56,17 +56,17 @@ if(BUILD_TESTS)
   target_link_libraries(test_py_entrance ggml tokenizers_cpp)
 endif()
 
-# set(BERT_SOURCE src/bert.cpp src/bert.h)
-# add_library(bert_shared SHARED ${BERT_SOURCE})
+set(BERT_SOURCE src/bert.cpp src/bert.h)
+add_library(bert_shared SHARED ${BERT_SOURCE})
 
-# target_include_directories(bert_shared PRIVATE ${TOKENZIER_CPP_PATH}/include)
-# target_include_directories(bert_shared PUBLIC src)
-# target_include_directories(bert_shared PRIVATE ggml/include)
+target_include_directories(bert_shared PRIVATE ${TOKENZIER_CPP_PATH}/include)
+target_include_directories(bert_shared PUBLIC src)
+target_include_directories(bert_shared PRIVATE ggml/include)
 
-# target_compile_features(bert_shared PUBLIC cxx_std_20)
+target_compile_features(bert_shared PUBLIC cxx_std_20)
 
-# target_link_libraries(bert_shared PRIVATE ggml)
-# target_link_libraries(bert_shared PRIVATE tokenizers_cpp)
+target_link_libraries(bert_shared PRIVATE ggml)
+target_link_libraries(bert_shared PRIVATE tokenizers_cpp)
 
-# set_target_properties(ggml PROPERTIES POSITION_INDEPENDENT_CODE ON)
-# set_target_properties(bert_shared PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(ggml PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(bert_shared PROPERTIES POSITION_INDEPENDENT_CODE ON)
