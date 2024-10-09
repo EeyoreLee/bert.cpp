@@ -35,6 +35,9 @@ class Bert:
             ctypes.c_int32,
         ]
 
+    def __del__(self):
+        self.lib.bert_free(self.ctx)
+
     def predict(self):
         ...
 
