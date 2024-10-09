@@ -650,6 +650,15 @@ static struct ggml_cgraph *bert_build_dynamic(bert_ctx *ctx, struct ggml_context
     return gf;
 };
 
+bert_ctx *py_bert_ctx_load_from_file(const char *fname, const char *tokenizer_json_fname, int32_t buf_compute)
+{
+    static bert_ctx *ctx = new bert_ctx();
+    bert_model_load_from_ggml(std::string(fname), ctx->model);
+    ctx->tokenizer.from_file(std::string(tokenizer_json_fname));
+    ctx->buf_compute.resize(buf_compute * 1024 * 1024);
+    return ctx;
+};
+
 int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads)
 {
     bert_tokenizer &tokenizer = ctx->tokenizer;
@@ -702,4 +711,40 @@ std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string
     struct ggml_tensor *classification = gf->nodes[gf->n_nodes - 1];
 
     return std::vector<int>{(int *)classification->data, (int *)classification->data + classification->ne[0]};
+};
+
+void py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads, int *classes)
+{
+    bert_tokenizer &tokenizer = ctx->tokenizer;
+    std::vector<std::string> text_vec;
+    for (int i = 0; i < n_sentences; ++i)
+    {
+        text_vec.emplace_back(sentences[i]);
+    }
+    std::vector<std::vector<int>> ids = tokenizer.batch_encode(text_vec);
+
+    const bert_model &model = ctx->model;
+    bert_buffer &buf_computer = ctx->buf_compute;
+
+    struct ggml_init_params params =
+        {
+            .mem_size = buf_computer.size,
+            .mem_buffer = buf_computer.data,
+            .no_alloc = false,
+        };
+
+    struct ggml_context *ctx0 = ggml_init(params);
+    bert_batch_tokens token;
+    token.init_input_ids(ids, tokenizer.pad_id);
+    ggml_cgraph *gf = bert_build_dynamic(ctx, ctx0, token);
+    ggml_graph_compute_with_ctx(ctx0, gf, n_threads);
+    ggml_free(ctx0);
+
+    struct ggml_tensor *classification = gf->nodes[gf->n_nodes - 1];
+    int *data = (int *)classification->data;
+    for (int i = 0; i < n_sentences; ++i)
+    {
+        classes[i] = data[i];
+    }
+    return;
 };
