@@ -170,7 +170,7 @@ extern "C"
 
     // For Python
     bert_ctx *py_bert_ctx_load_from_file(const char *fname, const char *tokenizer_json_fname, int32_t buf_compute);
-    int *py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads);
+    void py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads, int *classes);
 
 #ifdef __cplusplus
 }

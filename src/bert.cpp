@@ -713,7 +713,7 @@ std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string
     return std::vector<int>{(int *)classification->data, (int *)classification->data + classification->ne[0]};
 };
 
-int *py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads)
+void py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads, int *classes)
 {
     bert_tokenizer &tokenizer = ctx->tokenizer;
     std::vector<std::string> text_vec;
@@ -741,6 +741,10 @@ int *py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sent
     ggml_free(ctx0);
 
     struct ggml_tensor *classification = gf->nodes[gf->n_nodes - 1];
-
-    return (int *)classification->data;
+    int *data = (int *)classification->data;
+    for (int i = 0; i < n_sentences; ++i)
+    {
+        classes[i] = data[i];
+    }
+    return;
 };

@@ -8,7 +8,6 @@ set(CMAKE_BUILD_TYPE "Release")
 # test
 option(BUILD_TESTS "build test entrance" OFF)
 
-
 if(NOT MSVC)
   check_cxx_compiler_flag("-std=c++17" SUPPORT_CXX17)
   set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
@@ -22,7 +21,6 @@ endif()
 add_subdirectory(ggml ${CMAKE_CURRENT_BINARY_DIR}/ggml)
 set(TOKENZIER_CPP_PATH tokenizers-cpp)
 
-
 add_subdirectory(${TOKENZIER_CPP_PATH} tokenizers EXCLUDE_FROM_ALL)
 
 if(BUILD_TESTS)
@@ -33,11 +31,9 @@ if(BUILD_TESTS)
   target_include_directories(test_model_load PRIVATE ${TOKENZIER_CPP_PATH}/include)
   target_link_libraries(test_model_load ggml tokenizers_cpp)
 
-
   add_executable(test_tokenizer test/test_tokenizer.cpp src/bert.cpp)
   target_include_directories(test_tokenizer PRIVATE ${TOKENZIER_CPP_PATH}/include)
   target_link_libraries(test_tokenizer ggml tokenizers_cpp)
-
 
   add_executable(test_inference test/test_inference.cpp src/bert.cpp)
   target_include_directories(test_inference PRIVATE ${TOKENZIER_CPP_PATH}/include)
