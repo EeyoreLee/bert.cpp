@@ -164,6 +164,7 @@ extern "C"
         bert_buffer buf_compute;
     };
 
+    void bert_free(bert_ctx *ctx);
     int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads);
     std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string> &text_vec, int32_t n_threads);
     bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);

@@ -650,6 +650,12 @@ static struct ggml_cgraph *bert_build_dynamic(bert_ctx *ctx, struct ggml_context
     return gf;
 };
 
+void bert_free(bert_ctx *ctx)
+{
+    ggml_free(ctx->model.ctx);
+    delete ctx;
+}
+
 bert_ctx *py_bert_ctx_load_from_file(const char *fname, const char *tokenizer_json_fname, int32_t buf_compute)
 {
     static bert_ctx *ctx = new bert_ctx();
