@@ -77,7 +77,7 @@ class Bert:
 
 
 if __name__ == "__main__":
-    ggml_model_path = "/media/E/lichunyu/bert.cpp/data/pass_bom/ec/ggml_model.ggml"
+    ggml_model_path = "/media/E/lichunyu/bert.cpp/data/ggml-model/ggml_model.ggml"
     tokenizer_json_path = "/media/E/lichunyu/bert.cpp/data/test_tokenizer/tokenizer.json"
     hf_model_name_or_path = "/media/E/lichunyu/bert.cpp/data/example_bert_tiny_chinese"
     bertlib = Bert(ggml_model_path=ggml_model_path, tokenizer_json_path=tokenizer_json_path)
