@@ -165,6 +165,8 @@ extern "C"
     };
 
     void bert_free(bert_ctx *ctx);
+    int bert_get_hidden_size(bert_ctx *ctx);
+    int bert_get_num_labels(bert_ctx *ctx);
     int bert_predict(bert_ctx *ctx, const std::string &text, int32_t n_threads);
     std::vector<int> bert_batch_predict(bert_ctx *ctx, const std::vector<std::string> &text_vec, int32_t n_threads);
     bool bert_model_load_from_ggml(const std::string &fname, bert_model &model);
@@ -172,6 +174,7 @@ extern "C"
     // For Python
     bert_ctx *py_bert_ctx_load_from_file(const char *fname, const char *tokenizer_json_fname, int32_t buf_compute);
     void py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads, int *classes);
+    void py_bert_batch_predict_logits(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads, float **logits);
 
 #ifdef __cplusplus
 }

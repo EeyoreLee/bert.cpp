@@ -12,5 +12,18 @@ int main(int argc, char **argv)
     int32_t n_sentences = 4;
     int classes[n_sentences];
     py_bert_batch_predict(ctx, sentences, n_sentences, n_threads, classes);
+
+    // logits
+    int num_labels = bert_get_num_labels(ctx);
+    float *logits[n_sentences];
+    for (int i = 0; i < n_sentences; i++)
+    {
+        logits[i] = (float *)malloc(num_labels * sizeof(float));
+    }
+    py_bert_batch_predict_logits(ctx, sentences, n_sentences, n_threads, logits);
+    for (int i = 0; i < n_sentences; i++)
+    {
+        free(logits[i]);
+    }
     return 0;
 };
