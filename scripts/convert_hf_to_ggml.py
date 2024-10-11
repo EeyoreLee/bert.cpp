@@ -51,6 +51,8 @@ def convert(args):
         #     f.write(b_token)
 
         for name, weight in state_dict.items():
+            if name in ["bert.embeddings.position_ids"]:
+                continue
             weight = weight.numpy()
             num_dims = len(weight.shape)
             gguf_ftype = 1 if ftype == "f16" and num_dims != 1 and name not in [] else 0
