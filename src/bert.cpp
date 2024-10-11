@@ -395,6 +395,16 @@ bool bert_model_load_from_ggml(const std::string &fname, bert_model &model)
     return true;
 };
 
+int bert_get_hidden_size(bert_ctx *ctx)
+{
+    return ctx->model.hparams.hidden_size;
+}
+
+int bert_get_num_labels(bert_ctx *ctx)
+{
+    return ctx->model.hparams.num_labels;
+}
+
 static struct ggml_cgraph *bert_build(bert_ctx *ctx, struct ggml_context *ctx0, bert_tokens &tokens)
 {
     const size_t N = tokens.size;
@@ -751,6 +761,44 @@ void py_bert_batch_predict(bert_ctx *ctx, const char **sentences, int32_t n_sent
     for (int i = 0; i < n_sentences; ++i)
     {
         classes[i] = data[i];
+    }
+    return;
+};
+
+void py_bert_batch_predict_logits(bert_ctx *ctx, const char **sentences, int32_t n_sentences, int32_t n_threads, float **logits)
+{
+    bert_tokenizer &tokenizer = ctx->tokenizer;
+    std::vector<std::string> text_vec;
+    for (int i = 0; i < n_sentences; ++i)
+    {
+        text_vec.emplace_back(sentences[i]);
+    }
+    std::vector<std::vector<int>> ids = tokenizer.batch_encode(text_vec);
+
+    const bert_model &model = ctx->model;
+    bert_buffer &buf_computer = ctx->buf_compute;
+
+    struct ggml_init_params params =
+        {
+            .mem_size = buf_computer.size,
+            .mem_buffer = buf_computer.data,
+            .no_alloc = false,
+        };
+
+    struct ggml_context *ctx0 = ggml_init(params);
+    bert_batch_tokens token;
+    token.init_input_ids(ids, tokenizer.pad_id);
+    ggml_cgraph *gf = bert_build_dynamic(ctx, ctx0, token);
+    ggml_graph_compute_with_ctx(ctx0, gf, n_threads);
+    ggml_free(ctx0);
+
+    int num_labels = bert_get_num_labels(ctx);
+
+    struct ggml_tensor *logits_tensor = gf->nodes[gf->n_nodes - 2];
+    float *data = ggml_get_data_f32(logits_tensor);
+    for (int i = 0; i < n_sentences; ++i)
+    {
+        memcpy(logits[i], data + i * num_labels, sizeof(float) * num_labels);
     }
     return;
 };

@@ -25,13 +25,8 @@ def convert(args):
         print("Invalid dir_hf_model")
         sys.exit(1)
 
-    state_dict = torch.load(os.path.join(dir_hf_model, "pytorch_model.bin"),
-                            map_location="cpu")
+    state_dict = torch.load(os.path.join(dir_hf_model, "pytorch_model.bin"), map_location="cpu")
 
-    with open(os.path.join(dir_hf_model, "tokenizer_config.json"), "r") as f:
-        tokenizer_config = json.load(f)
-    with open(os.path.join(dir_hf_model, "vocab.txt"), "r") as f:
-        vocab = f.read().splitlines()
     with open(os.path.join(dir_hf_model, "config.json"), "r") as f:
         config = json.load(f)
 
@@ -74,10 +69,7 @@ def convert(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("dir_hf_model",
-                        type=str,
-                        default=None,
-                        help="dir for downloaded huggingface pytorch model")
+    parser.add_argument("dir_hf_model", type=str, default=None, help="dir for downloaded huggingface pytorch model")
     parser.add_argument("-s", "--save", type=str, default=None)
     parser.add_argument("--ftype", type=str, default="f32", help="f32 or f16")
     args = parser.parse_args()
