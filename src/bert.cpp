@@ -64,6 +64,8 @@ void bert_batch_tokens::init_input_ids(std::vector<std::vector<int>> &input_ids,
 {
     static std::vector<bert_vocab_id> flat{};
     static std::vector<int32_t> mask{};
+    flat.clear();
+    mask.clear();
     for (const auto &ids : input_ids)
     {
         flat.insert(flat.end(), ids.begin(), ids.end());
