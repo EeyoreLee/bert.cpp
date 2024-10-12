@@ -2,7 +2,7 @@
 
 int main(int argc, char **argv)
 {
-    const char *fname = "/media/E/lichunyu/bert.cpp/data/ggml-model/ggml_model.gguf";
+    const char *fname = "/media/E/lichunyu/bert.cpp/data/ggml-model/ggml_model.ggml";
     const char *tokenizer_json_fname = "/media/E/lichunyu/bert.cpp/data/test_tokenizer/tokenizer.json";
     int32_t buf_compute = 320;
     bert_ctx *ctx = py_bert_ctx_load_from_file(fname, tokenizer_json_fname, buf_compute);
