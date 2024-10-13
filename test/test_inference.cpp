@@ -7,7 +7,7 @@
 int main(int argc, char **argv)
 {
     const std::string path = "/media/E/lichunyu/bert.cpp/data/test_tokenizer/tokenizer.json";
-    const std::string fname = "/media/E/lichunyu/bert.cpp/data/ggml-model/ggml_model.gguf";
+    const std::string fname = "/media/E/lichunyu/bert.cpp/data/ggml-model/ggml_model.ggml";
     auto start_cpp_total = std::chrono::high_resolution_clock::now();
     bert_ctx *ctx = new bert_ctx();
     bert_model_load_from_ggml(fname, ctx->model);

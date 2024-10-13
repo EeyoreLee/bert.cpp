@@ -7,7 +7,7 @@
 int main(int argc, char **argv)
 {
     const std::string path = "/media/E/lichunyu/bert.cpp/data/test_tokenizer/tokenizer.json";
-    const std::string fname = "/media/E/lichunyu/bert.cpp/data/ggml-model/ggml_model.gguf";
+    const std::string fname = "/media/E/lichunyu/bert.cpp/data/ggml-model/ggml_model.ggml";
     const std::string text1 = "卫生间抽纸";
     const std::string text2 = "卫生间抽纸";
     const std::string text3 = "卫生间抽纸";
