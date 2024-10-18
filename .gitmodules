@@ -1,0 +1,7 @@
+[submodule "ggml"]
+	path = ggml
+	url = https://github.com/ggerganov/ggml.git
+[submodule "tokenizers-cpp"]
+	path = tokenizers-cpp
+	url = https://github.com/EeyoreLee/tokenizers-cpp.git
+	branch = pic
